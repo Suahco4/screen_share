@@ -1,0 +1,1903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUAHCO4 | Advanced Network Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Chart.js for beautiful analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* -------------------------------------------------------------------------- */
+        /*                               CORE THEME                                   */
+        /* -------------------------------------------------------------------------- */
+        :root {
+            --color-bg: #030712;
+            --color-panel: #111827;
+            --color-border: #1f2937;
+            --color-accent: #3b82f6;
+            --color-accent-glow: rgba(59, 130, 246, 0.5);
+            --color-success: #10b981;
+            --color-danger: #ef4444;
+            --color-warning: #f59e0b;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: var(--color-bg);
+            color: #e5e7eb;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /*                               ANIMATIONS                                   */
+        /* -------------------------------------------------------------------------- */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 5px var(--color-accent-glow); }
+            50% { box-shadow: 0 0 20px var(--color-accent-glow), 0 0 10px var(--color-accent); }
+        }
+
+        @keyframes text-glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        @keyframes border-trace {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /*                               COMPONENTS                                   */
+        /* -------------------------------------------------------------------------- */
+        
+        /* CRT Overlay Effect */
+        .crt-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 9999;
+            opacity: 0.4;
+        }
+
+        /* Sci-Fi Panel */
+        .sci-panel {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--color-border);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sci-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+            opacity: 0.5;
+        }
+
+        .sci-panel:hover {
+            border-color: var(--color-accent);
+        }
+
+        /* Screen Node Styling */
+        .screen-node {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        .screen-node:hover {
+            transform: scale(1.02);
+            z-index: 20;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border-color: var(--color-accent);
+        }
+
+        .screen-node video {
+            filter: contrast(1.1) brightness(1.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Grid Background */
+        .cyber-grid-bg {
+            background-image: 
+                linear-gradient(rgba(31, 41, 55, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(31, 41, 55, 0.3) 1px, transparent 1px);
+            background-size: 40px 40px;
+            perspective: 1000px;
+            transform-style: preserve-3d;
+        }
+
+        /* Loader */
+        .loader-circle {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--color-accent);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin-slow 1s linear infinite;
+        }
+
+        /* Glitch Text Class */
+        .glitch-text:hover {
+            animation: text-glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: var(--color-accent);
+        }
+
+        /* Terminal Output */
+        .terminal-line {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            line-height: 1.2;
+            color: #10b981;
+            text-shadow: 0 0 2px rgba(16, 185, 129, 0.5);
+            margin-bottom: 2px;
+        }
+
+        /* Active Speaker / High Audio indicator */
+        .audio-active {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4) !important;
+        }
+
+        /* Range Input Styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            margin-top: -5px; 
+            cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: #374151;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            visibility: hidden;
+            position: absolute;
+            background: #000;
+            border: 1px solid #333;
+            padding: 4px 8px;
+            font-size: 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+            z-index: 50;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Scan Effect */
+        .scanning-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 255, 0, 0.05);
+            border: 2px solid #10b981;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            font-family: 'Courier New', monospace;
+            color: #10b981;
+            font-weight: bold;
+            text-shadow: 0 0 5px #10b981;
+            pointer-events: none;
+            backdrop-filter: blur(2px);
+            animation: pulse-scan 0.5s infinite alternate;
+        }
+        @keyframes pulse-scan {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
+        }
+
+        /* Encryption Effect */
+        .encrypted-feed video, .encrypted-feed canvas, .encrypted-feed .sci-panel {
+            filter: blur(8px) contrast(200%) brightness(0.8) hue-rotate(180deg) !important;
+            transition: filter 0.5s ease;
+        }
+        .encrypted-feed .screen-node::after {
+            content: 'ENCRYPTED';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: monospace;
+            background: black;
+            padding: 5px 10px;
+            z-index: 100;
+            font-size: 12px;
+            letter-spacing: 2px;
+            border: 1px solid white;
+        }
+
+    </style>
+</head>
+<body class="h-screen flex flex-col font-sans selection:bg-blue-500 selection:text-white">
+
+    <!-- CRT Filter Overlay -->
+    <div class="crt-overlay pointer-events-none"></div>
+
+    <!-- BOOT SEQUENCE OVERLAY -->
+    <div id="boot-sequence" class="fixed inset-0 bg-black z-[100] flex flex-col justify-end p-10 font-mono text-xs text-blue-500 overflow-hidden cursor-wait">
+        <div id="boot-log" class="mb-4 space-y-1"></div>
+        <div class="w-full h-1 bg-gray-900 rounded overflow-hidden">
+            <div id="boot-progress" class="h-full bg-blue-500 w-0 transition-all duration-100 ease-out"></div>
+        </div>
+    </div>
+
+    <!-- AUDIO ELEMENT FOR GENERATED SOUNDS -->
+    <div id="audio-container" class="hidden"></div>
+
+    <!-- ----------------------------------------------------------------------- -->
+    <!--                               HEADER                                    -->
+    <!-- ----------------------------------------------------------------------- -->
+    <header class="h-16 bg-gray-950 border-b border-gray-800 flex justify-between items-center px-6 relative z-30 shadow-2xl">
+        <div class="flex items-center gap-4">
+            <div class="relative w-8 h-8 flex items-center justify-center">
+                <div class="absolute inset-0 border-2 border-blue-500 rounded-lg animate-pulse"></div>
+                <div class="absolute inset-1 border border-blue-300 rounded opacity-50"></div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-black tracking-tighter text-white glitch-text cursor-default">SUAH<span class="text-blue-500">CO4</span></h1>
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-mono tracking-widest">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                    SYSTEM ONLINE
+                    <span class="text-gray-600">|</span>
+                    VER 4.2.0
+                </div>
+            </div>
+        </div>
+
+        <!-- Central Stats Widget -->
+        <div class="hidden lg:flex gap-8">
+            <div class="flex flex-col items-center group cursor-pointer" onclick="togglePanel('network')">
+                <span class="text-[10px] text-gray-500 font-bold tracking-widest uppercase group-hover:text-blue-400 transition-colors">Bandwidth</span>
+                <span id="stat-bandwidth" class="text-lg font-mono text-blue-400 font-bold">0.0 <span class="text-xs">MB/s</span></span>
+            </div>
+            <div class="w-px h-8 bg-gray-800"></div>
+            <div class="flex flex-col items-center group cursor-pointer" onclick="togglePanel('nodes')">
+                <span class="text-[10px] text-gray-500 font-bold tracking-widest uppercase group-hover:text-green-400 transition-colors">Active Nodes</span>
+                <span id="stat-nodes" class="text-lg font-mono text-green-400 font-bold">0</span>
+            </div>
+            <div class="w-px h-8 bg-gray-800"></div>
+            <div class="flex flex-col items-center">
+                <span class="text-[10px] text-gray-500 font-bold tracking-widest uppercase">Latency</span>
+                <span class="text-lg font-mono text-yellow-500 font-bold">12 <span class="text-xs">ms</span></span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button id="mute-all-btn" onclick="toggleGlobalMute()" class="w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white transition has-tooltip">
+                <span class="tooltip">Toggle Global Audio</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+            </button>
+            <div class="h-8 w-px bg-gray-800 mx-2"></div>
+            <button onclick="toggleSidePanel()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-xs font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(37,99,235,0.3)] transition transform active:scale-95 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                </svg>
+                Menu
+            </button>
+        </div>
+    </header>
+
+    <!-- ----------------------------------------------------------------------- -->
+    <!--                               MAIN LAYOUT                               -->
+    <!-- ----------------------------------------------------------------------- -->
+    <div class="flex-1 flex overflow-hidden relative">
+        
+        <!-- Animated Background Canvas -->
+        <canvas id="bg-canvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-20"></canvas>
+
+        <!-- LEFT SIDEBAR (Dynamic) -->
+        <aside id="main-sidebar" class="w-0 bg-gray-900 border-r border-gray-800 transition-all duration-300 flex flex-col overflow-hidden relative z-20">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <h2 class="text-sm font-bold text-white tracking-widest">CONTROL PANEL</h2>
+                <button onclick="toggleSidePanel()" class="text-gray-500 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Sidebar Tabs -->
+            <div class="flex border-b border-gray-800 text-[10px] font-bold text-gray-500">
+                <button onclick="switchTab('controls')" class="flex-1 py-3 hover:bg-gray-800 hover:text-blue-400 transition bg-gray-800/50 text-blue-400 border-b-2 border-blue-500" id="tab-btn-controls">CONTROLS</button>
+                <button onclick="switchTab('chat')" class="flex-1 py-3 hover:bg-gray-800 hover:text-blue-400 transition" id="tab-btn-chat">CHAT</button>
+                <button onclick="switchTab('logs')" class="flex-1 py-3 hover:bg-gray-800 hover:text-blue-400 transition" id="tab-btn-logs">LOGS</button>
+            </div>
+
+            <!-- Tab Content: Controls -->
+            <div id="tab-controls" class="flex flex-col p-4 space-y-6 overflow-y-auto flex-1">
+                <!-- Action Groups -->
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Session Management</label>
+                    <button onclick="startAsHost()" class="w-full bg-blue-600/20 border border-blue-500/50 text-blue-400 hover:bg-blue-600 hover:text-white p-3 rounded flex items-center justify-center gap-2 transition group">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <span class="font-bold">New Session</span>
+                    </button>
+                    <button onclick="startLocalShare()" class="w-full bg-green-600/20 border border-green-500/50 text-green-400 hover:bg-green-600 hover:text-white p-3 rounded flex items-center justify-center gap-2 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span class="font-bold">Add Local Screen</span>
+                    </button>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Simulation Tools</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="addSimulatedNode()" class="bg-gray-800 hover:bg-gray-700 text-white p-2 rounded text-xs border border-gray-700">+ 1 Node</button>
+                        <button onclick="fillGrid(5)" class="bg-gray-800 hover:bg-gray-700 text-white p-2 rounded text-xs border border-gray-700">+ 5 Nodes</button>
+                        <button onclick="fillGrid(24)" class="col-span-2 bg-purple-900/30 border border-purple-500/30 hover:bg-purple-900/50 text-purple-300 p-2 rounded text-xs transition">
+                            Load Test (24 Nodes)
+                        </button>
+                        <button onclick="triggerSelfDestruct()" class="col-span-2 bg-red-900/30 border border-red-500/30 hover:bg-red-900/50 text-red-300 p-2 rounded text-xs transition animate-pulse font-bold">
+                            ⚠️ INITIATE LOCKDOWN ⚠️
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Grid Layout</label>
+                     <div class="flex gap-2 bg-gray-800 p-1 rounded">
+                        <button onclick="setGridSize('sm')" class="flex-1 text-xs py-1 rounded hover:bg-gray-700 text-gray-400">Small</button>
+                        <button onclick="setGridSize('md')" class="flex-1 text-xs py-1 rounded bg-gray-700 text-white shadow">Auto</button>
+                        <button onclick="setGridSize('lg')" class="flex-1 text-xs py-1 rounded hover:bg-gray-700 text-gray-400">Large</button>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">System Theme</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setTheme('#3b82f6')" class="h-6 rounded bg-blue-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#10b981')" class="h-6 rounded bg-emerald-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#ef4444')" class="h-6 rounded bg-red-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#f59e0b')" class="h-6 rounded bg-amber-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#8b5cf6')" class="h-6 rounded bg-violet-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#ec4899')" class="h-6 rounded bg-pink-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#06b6d4')" class="h-6 rounded bg-cyan-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#6366f1')" class="h-6 rounded bg-indigo-500 hover:scale-110 transition"></button>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Advanced Protocols</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="runDeepScan()" class="bg-cyan-900/20 border border-cyan-500/50 text-cyan-400 p-3 rounded text-xs hover:bg-cyan-900/40 transition flex items-center justify-center gap-2 group">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 group-hover:animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            DEEP SCAN
+                        </button>
+                        <button onclick="toggleEncryption()" id="btn-encrypt" class="bg-indigo-900/20 border border-indigo-500/50 text-indigo-400 p-3 rounded text-xs hover:bg-indigo-900/40 transition flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            ENCRYPT
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">System Utilities</label>
+                    
+                    <!-- Audio Slider -->
+                    <div class="bg-gray-800 p-3 rounded border border-gray-700 space-y-2">
+                        <div class="flex justify-between text-xs text-gray-400">
+                            <span>MASTER GAIN</span>
+                            <span id="vol-display">30%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="30" class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" oninput="updateMasterVolume(this.value)">
+                    </div>
+
+                    <!-- Toggles -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="toggleCRT()" id="btn-crt" class="bg-blue-900/30 border border-blue-500/50 text-blue-400 p-2 rounded text-xs hover:bg-blue-900/50 transition">
+                            CRT FILTER: ON
+                        </button>
+                        <button onclick="toggleGrayscale()" id="btn-mono" class="bg-gray-800 border border-gray-600 text-gray-400 p-2 rounded text-xs hover:bg-gray-700 transition">
+                            MONOCHROME
+                        </button>
+                    </div>
+
+                    <!-- Quick Alerts -->
+                    <div class="grid grid-cols-3 gap-1 mt-2">
+                        <button onclick="broadcastQuickAlert('INFO')" class="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-600/30 text-[10px] py-1 rounded">INFO</button>
+                        <button onclick="broadcastQuickAlert('WARN')" class="bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 border border-yellow-600/30 text-[10px] py-1 rounded">WARN</button>
+                        <button onclick="broadcastQuickAlert('CRIT')" class="bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/30 text-[10px] py-1 rounded">CRIT</button>
+                    </div>
+                </div>
+
+                <!-- Mini Map -->
+                <div class="mt-4 border border-gray-800 rounded bg-black p-2">
+                    <div class="text-[10px] text-gray-500 mb-2">NETWORK TOPOLOGY</div>
+                    <canvas id="topology-canvas" width="250" height="150" class="w-full h-auto opacity-80"></canvas>
+                </div>
+            </div>
+
+            <!-- Tab Content: Chat -->
+            <div id="tab-chat" class="hidden flex-col flex-1 overflow-hidden">
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-xs custom-scrollbar">
+                    <div class="text-gray-500 text-center italic my-4">-- Encrypted Channel Established --</div>
+                </div>
+                <div class="p-3 bg-gray-950 border-t border-gray-800 shrink-0">
+                    <form onsubmit="sendChatMessage(event)" class="flex gap-2 items-center">
+                        <label class="cursor-pointer text-gray-500 hover:text-white p-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                            <input type="file" id="chat-file-input" class="hidden" onchange="handleFileUpload(this)">
+                        </label>
+                        <input type="text" id="chat-input" placeholder="Broadcast message..." class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none">
+                        <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded text-xs hover:bg-blue-500">SEND</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tab Content: Terminal (Replaces Logs) -->
+            <div id="tab-logs" class="hidden flex-col flex-1 bg-black font-mono text-[10px] p-2 overflow-hidden">
+                <div id="terminal-output" class="flex-1 overflow-y-auto text-green-500/80 mb-2 break-all space-y-1 custom-scrollbar">
+                    <div class="opacity-50">SUAHCO4 [VERSION 4.2.0]</div>
+                    <div class="opacity-50">(c) 2024 CYBERNETICS CORP. ALL RIGHTS RESERVED.</div>
+                    <br>
+                    <div>Type 'help' for a list of available commands.</div>
+                </div>
+                <div class="shrink-0 p-2 bg-black border-t border-gray-800 flex items-center">
+                    <span class="text-green-500 mr-2">></span>
+                    <input type="text" id="terminal-input" class="flex-1 bg-transparent border-none outline-none text-green-400 font-bold" autocomplete="off" spellcheck="false" placeholder="_">
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN GRID AREA -->
+        <main class="flex-1 overflow-y-auto bg-gray-950 relative p-4 custom-scrollbar" id="main-scroll-area">
+            <div id="grid-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pb-20 transition-all duration-500">
+                <!-- Grid Items Injected Here -->
+            </div>
+            
+            <!-- Empty State -->
+            <div id="empty-state" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div class="text-center">
+                    <div class="w-24 h-24 mx-auto mb-6 relative">
+                         <div class="absolute inset-0 border-4 border-gray-800 rounded-full animate-[spin_10s_linear_infinite]"></div>
+                         <div class="absolute inset-2 border-4 border-gray-800 border-t-blue-500 rounded-full animate-spin"></div>
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-700 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-700">SYSTEM STANDBY</h2>
+                    <p class="text-gray-500 mt-2">Initialize nodes to begin monitoring sequence.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ----------------------------------------------------------------------- -->
+    <!--                                FOOTER                                   -->
+    <!-- ----------------------------------------------------------------------- -->
+    <footer class="h-8 bg-gray-900 border-t border-gray-800 flex items-center justify-between px-4 text-[10px] text-gray-500 z-30">
+        <div class="flex items-center gap-4">
+            <span id="connection-status"><span class="text-green-500">●</span> SOCKET: CONNECTED</span>
+            <span>ENCRYPTION: AES-256</span>
+            <span id="coordinates">LAT: 00.00 LON: 00.00</span>
+        </div>
+        <div class="flex items-center gap-4 font-mono">
+            <span id="active-timer">T+00:00:00</span>
+            <span id="clock" class="text-blue-400">00:00:00 UTC</span>
+        </div>
+    </footer>
+
+    <!-- ----------------------------------------------------------------------- -->
+    <!--                                MODALS                                   -->
+    <!-- ----------------------------------------------------------------------- -->
+    
+    <!-- Landing / Init Modal -->
+    <div id="landing-overlay" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-0 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl relative">
+            
+            <!-- Left: Graphic -->
+            <div class="bg-gray-900 p-12 flex flex-col justify-center relative overflow-hidden group">
+                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+                
+                <div class="relative z-10">
+                    <h1 class="text-5xl font-black text-white mb-2 tracking-tighter">SUAH<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">CO4</span></h1>
+                    <p class="text-gray-400 text-lg mb-8">Next-Gen Distributed Screen Monitoring</p>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Unlimited Node Scaling</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Peer-to-Peer Encrypted</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-gray-300">
+                            <svg class="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Low Latency WebRTC</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Actions -->
+            <div class="bg-black p-12 flex flex-col justify-center border-l border-gray-800">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-white mb-2">Initialize Session</h2>
+                    <p class="text-gray-500 text-sm">Select your role to begin handshake protocol.</p>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Host Btn -->
+                    <button onclick="startAsHost()" class="w-full group relative overflow-hidden rounded-lg bg-blue-600 p-px focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-900">
+                        <span class="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)] opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                        <span class="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-lg bg-gray-900 px-8 py-4 text-sm font-medium text-white backdrop-blur-3xl transition-colors group-hover:bg-gray-900/90">
+                            <div class="flex flex-col items-start w-full">
+                                <span class="font-bold text-lg text-blue-400">CREATE CONTROL ROOM</span>
+                                <span class="text-xs text-gray-400">Monitor incoming streams as Host</span>
+                            </div>
+                            <svg class="ml-auto w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                        </span>
+                    </button>
+
+                    <!-- Join Form -->
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 mt-6">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Join Existing Room</label>
+                        <div class="space-y-3">
+                            <div>
+                                <input type="text" id="join-username-input" placeholder="ENTER YOUR CALLSIGN" class="w-full bg-black border border-gray-700 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-xs uppercase tracking-wider mb-1">
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="join-id-input" placeholder="ENTER HOST ID" class="flex-1 bg-black border border-gray-700 rounded px-3 py-2 text-white focus:border-green-500 focus:outline-none font-mono text-xs uppercase">
+                                <button onclick="startAsClient()" class="bg-green-600 hover:bg-green-500 text-white px-4 rounded font-bold transition text-xs">
+                                    CONNECT
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Offline Toggle -->
+                    <div class="mt-6 pt-6 border-t border-gray-800 text-center">
+                        <button onclick="startOfflineMode()" class="text-xs text-gray-500 hover:text-white underline decoration-dotted underline-offset-4 transition">
+                            ENTER OFFLINE / LOCAL CONSOLE
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Node Detail Modal (Overlay) -->
+    <div id="node-detail-modal" class="fixed inset-0 bg-black/90 z-40 hidden flex items-center justify-center p-8 backdrop-blur">
+        <div class="bg-gray-900 border border-gray-700 w-full max-w-6xl h-full max-h-[80vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
+            <button onclick="closeDetailModal()" class="absolute top-4 right-4 text-white hover:text-red-500 z-50">
+                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            
+            <div class="flex h-full">
+                <!-- Video Feed -->
+                <div class="w-2/3 bg-black flex items-center justify-center relative border-r border-gray-800" id="modal-video-container">
+                    <!-- Video injected here -->
+                </div>
+                
+                <!-- Analytics Sidebar -->
+                <div class="w-1/3 flex flex-col bg-gray-900">
+                    <div class="p-4 border-b border-gray-800">
+                        <h3 class="text-xl font-bold text-white" id="modal-node-title">Node-001</h3>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                            <span class="text-xs text-green-400 font-mono">LIVE FEED</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 flex-1 overflow-y-auto space-y-6">
+                        <!-- fake stats -->
+                        <div>
+                            <div class="text-xs text-gray-500 font-bold mb-2">CPU USAGE HISTORY</div>
+                            <canvas id="detail-chart-cpu" class="w-full h-32"></canvas>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-800 p-3 rounded">
+                                <div class="text-[10px] text-gray-400">PACKETS/SEC</div>
+                                <div class="text-xl text-white font-mono">4,291</div>
+                            </div>
+                            <div class="bg-gray-800 p-3 rounded">
+                                <div class="text-[10px] text-gray-400">BITRATE</div>
+                                <div class="text-xl text-white font-mono">8.2 <span class="text-xs">Mbps</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-black p-3 rounded font-mono text-xs h-40 overflow-hidden text-green-600 border border-gray-800">
+                            <div id="modal-terminal-logs" class="flex flex-col-reverse">
+                                <!-- logs -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 border-t border-gray-800 bg-gray-950 space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="btn-record-stream" onclick="toggleRecording()" class="bg-gray-800 hover:bg-gray-700 text-white py-2 rounded border border-gray-600 flex items-center justify-center gap-2">
+                                <div class="w-2 h-2 rounded-full bg-red-500"></div>
+                                <span id="record-text">START REC</span>
+                            </button>
+                            <button onclick="togglePiP()" class="bg-gray-800 hover:bg-gray-700 text-white py-2 rounded border border-gray-600">
+                                PIP MODE
+                            </button>
+                        </div>
+                        <button onclick="disconnectCurrentModalNode()" class="w-full bg-red-900/30 border border-red-500/50 text-red-400 py-3 rounded hover:bg-red-900/50 transition font-bold">
+                            TERMINATE CONNECTION
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Area -->
+    <div id="toast-container" class="fixed bottom-12 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        /* -------------------------------------------------------------------------- */
+        /*                               SYSTEM ENGINE                                */
+        /* -------------------------------------------------------------------------- */
+        
+        class AudioEngine {
+            constructor() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = 0.3; // Default volume
+                this.masterGain.connect(this.ctx.destination);
+                this.muted = false;
+            }
+
+            playTone(freq, type, duration, vol = 1) {
+                if (this.muted) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            }
+
+            playAlert() {
+                this.playTone(880, 'sine', 0.1);
+                setTimeout(() => this.playTone(440, 'square', 0.3), 100);
+            }
+
+            playConnect() {
+                this.playTone(600, 'sine', 0.1);
+                setTimeout(() => this.playTone(1200, 'sine', 0.2), 100);
+            }
+
+            playDisconnect() {
+                this.playTone(300, 'sawtooth', 0.4);
+            }
+
+            toggleMute() {
+                this.muted = !this.muted;
+                return this.muted;
+            }
+        }
+
+        class Logger {
+            constructor() {
+                // We will use the terminal output for system logs too
+            }
+
+            log(msg, type='info') {
+                if(terminal) {
+                    terminal.print(`[SYS] ${msg}`, type === 'error' ? 'text-red-500' : type === 'success' ? 'text-blue-400' : 'text-gray-400');
+                }
+            }
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /*                            TERMINAL CONTROLLER                             */
+        /* -------------------------------------------------------------------------- */
+        class TerminalController {
+            constructor() {
+                this.output = document.getElementById('terminal-output');
+                this.input = document.getElementById('terminal-input');
+                this.input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        this.execute(this.input.value);
+                        this.input.value = '';
+                    }
+                });
+            }
+
+            print(text, colorClass = 'text-green-500') {
+                const div = document.createElement('div');
+                div.className = colorClass;
+                div.innerText = text;
+                this.output.appendChild(div);
+                this.output.scrollTop = this.output.scrollHeight;
+            }
+
+            execute(cmdRaw) {
+                const cmd = cmdRaw.trim();
+                if(!cmd) return;
+                
+                this.print(`> ${cmd}`, 'text-white font-bold mt-2');
+                
+                const parts = cmd.split(' ');
+                const action = parts[0].toLowerCase();
+                const args = parts.slice(1);
+
+                switch(action) {
+                    case 'help':
+                        this.print('AVAILABLE COMMANDS:', 'text-yellow-500 underline');
+                        this.print('  help             - Show this menu');
+                        this.print('  clear            - Clear terminal');
+                        this.print('  status           - System diagnostics');
+                        this.print('  theme [color]    - Set accent color (hex or name)');
+                        this.print('  grid [size]      - Set grid size (sm, md, lg)');
+                        this.print('  purge            - Disconnect all nodes');
+                        this.print('  sim [count]      - Add simulated nodes');
+                        this.print('  whoami           - Show session ID');
+                        break;
+                    case 'clear':
+                        this.output.innerHTML = '';
+                        break;
+                    case 'whoami':
+                        this.print(`SESSION ID: ${myId || 'OFFLINE'}`, 'text-blue-400');
+                        break;
+                    case 'status':
+                        this.print('--- SYSTEM DIAGNOSTICS ---', 'text-blue-400');
+                        this.print(`UPTIME: ${((Date.now() - startTime)/1000).toFixed(1)}s`);
+                        this.print(`ACTIVE NODES: ${nodeCount}`);
+                        this.print(`HOST STATUS: ${isHost ? 'ACTIVE' : 'STANDBY'}`);
+                        this.print(`MEMORY HEAP: ${Math.floor(Math.random()*40 + 20)}%`);
+                        break;
+                    case 'sim':
+                        const count = parseInt(args[0]) || 1;
+                        this.print(`Injecting ${count} simulated nodes...`);
+                        fillGrid(count);
+                        break;
+                    case 'purge':
+                        this.print('INITIATING PURGE PROTOCOL...', 'text-red-500');
+                        clearGrid();
+                        break;
+                    case 'theme':
+                        const color = args[0];
+                        if(color) {
+                            setTheme(color);
+                            this.print(`Theme updated to ${color}`);
+                        } else {
+                            this.print('Usage: theme #ff0000');
+                        }
+                        break;
+                    case 'grid':
+                        setGridSize(args[0]);
+                        this.print(`Grid layout set to ${args[0]}`);
+                        break;
+                    default:
+                        this.print(`Unknown command: ${action}`, 'text-red-500');
+                }
+            }
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /*                               APP CONTROLLER                               */
+        /* -------------------------------------------------------------------------- */
+
+        const audioSys = new AudioEngine();
+        const logger = new Logger();
+        let peer = null;
+        let myId = null;
+        let myUsername = 'SYSTEM';
+        let isHost = false;
+        let nodeCount = 0;
+        let activeConnections = [];
+        let startTime = Date.now();
+        
+        // Advanced Modules
+        let terminal = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        // ------------------ INITIALIZATION ------------------
+        
+        window.onload = () => {
+            // Init Terminal
+            terminal = new TerminalController();
+            runBootSequence(() => {
+                initBackgroundCanvas();
+                initTopologyCanvas();
+                updateClock();
+                // Enable audio context on first interaction if needed, or after boot
+                document.body.addEventListener('click', () => {
+                    if(audioSys.ctx.state === 'suspended') audioSys.ctx.resume();
+                }, {once:true});
+            });
+        };
+
+        function runBootSequence(callback) {
+            const log = document.getElementById('boot-log');
+            const progress = document.getElementById('boot-progress');
+            const bootScreen = document.getElementById('boot-sequence');
+            
+            const steps = [
+                "BIOS CHECK... OK",
+                "LOADING KERNEL... OK",
+                "MOUNTING FILE SYSTEM... RW",
+                "INITIALIZING GRAPHICS ENGINE (GPU-0)... OK",
+                "LOADING TEXTURES...",
+                "ESTABLISHING SECURE HANDSHAKE...",
+                "DECRYPTING CONFIG...",
+                "STARTING SUAHCO4 DAEMON...",
+                "CONNECTING TO SATELLITE UPLINK...",
+                "SYSTEM READY."
+            ];
+
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= steps.length) {
+                    clearInterval(interval);
+                    progress.style.width = '100%';
+                    setTimeout(() => {
+                        bootScreen.style.opacity = '0';
+                        setTimeout(() => {
+                            bootScreen.remove();
+                            callback();
+                        }, 500);
+                    }, 500);
+                    return;
+                }
+                
+                const div = document.createElement('div');
+                div.innerText = `> ${steps[i]} ${Math.random() > 0.8 ? '[CACHED]' : ''}`;
+                if(Math.random() > 0.9) div.className = 'text-yellow-500';
+                log.appendChild(div);
+                
+                progress.style.width = `${(i / steps.length) * 100}%`;
+                
+                // Randomize scroll speed
+                i++;
+            }, 150);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toISOString().split('T')[1].split('.')[0] + " UTC";
+            
+            const diff = Date.now() - startTime;
+            const h = Math.floor(diff / 3600000).toString().padStart(2,'0');
+            const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2,'0');
+            const s = Math.floor((diff % 60000) / 1000).toString().padStart(2,'0');
+            document.getElementById('active-timer').innerText = `T+${h}:${m}:${s}`;
+            
+            requestAnimationFrame(updateClock);
+        }
+
+        // ------------------ UI CONTROLS ------------------
+
+        function setTheme(color) {
+            document.documentElement.style.setProperty('--color-accent', color);
+            // Convert hex to rgba for glow
+            const r = parseInt(color.substr(1,2), 16);
+            const g = parseInt(color.substr(3,2), 16);
+            const b = parseInt(color.substr(5,2), 16);
+            document.documentElement.style.setProperty('--color-accent-glow', `rgba(${r},${g},${b},0.5)`);
+            
+            // Update UI elements that use direct classes (hacky but works for demo)
+            document.querySelectorAll('.text-blue-400').forEach(el => {
+                if(!el.closest('header')) el.style.color = color; // Preserve header slightly
+            });
+            
+            showToast('Visual Interface Updated', 'success');
+        }
+
+        function toggleSidePanel() {
+            const sb = document.getElementById('main-sidebar');
+            if (sb.classList.contains('w-0')) {
+                sb.classList.remove('w-0');
+                sb.classList.add('w-80');
+            } else {
+                sb.classList.add('w-0');
+                sb.classList.remove('w-80');
+            }
+            audioSys.playTone(200, 'sine', 0.05);
+        }
+
+        function switchTab(tab) {
+            ['controls', 'chat', 'logs'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('flex');
+                document.getElementById(`tab-btn-${t}`).classList.remove('bg-gray-800/50', 'text-blue-400', 'border-b-2', 'border-blue-500');
+            });
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('flex');
+            document.getElementById(`tab-btn-${tab}`).classList.add('bg-gray-800/50', 'text-blue-400', 'border-b-2', 'border-blue-500');
+            audioSys.playTone(400, 'sine', 0.05);
+        }
+
+        function setGridSize(size) {
+            const grid = document.getElementById('grid-container');
+            grid.className = 'grid gap-4 pb-20 transition-all duration-500 ';
+            
+            if(size === 'sm') grid.classList.add('grid-cols-2', 'md:grid-cols-4', 'lg:grid-cols-6', 'xl:grid-cols-8');
+            else if(size === 'lg') grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
+            else grid.classList.add('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4', 'xl:grid-cols-5');
+        }
+
+        function toggleGlobalMute() {
+            const muted = audioSys.toggleMute();
+            const btn = document.getElementById('mute-all-btn');
+            if(muted) {
+                btn.classList.add('text-red-500');
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>`;
+                showToast('System Audio Muted', 'error');
+            } else {
+                btn.classList.remove('text-red-500');
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>`;
+                showToast('System Audio Enabled', 'success');
+            }
+        }
+
+        // ------------------ NOTIFICATION SYSTEM ------------------
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const el = document.createElement('div');
+            
+            let colors = type === 'success' ? 'border-green-500 text-green-400' : 
+                         type === 'error' ? 'border-red-500 text-red-400' : 
+                         'border-blue-500 text-blue-400';
+
+            el.className = `bg-gray-900/95 border-l-4 ${colors} text-xs font-mono px-4 py-3 rounded shadow-2xl backdrop-blur transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-3 min-w-[200px]`;
+            el.innerHTML = `
+                <div class="h-2 w-2 rounded-full ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'} animate-pulse"></div>
+                ${msg}
+            `;
+            
+            container.appendChild(el);
+            audioSys.playAlert();
+            logger.log(msg, type);
+
+            requestAnimationFrame(() => el.classList.remove('translate-x-full', 'opacity-0'));
+            setTimeout(() => {
+                el.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => el.remove(), 300);
+            }, 4000);
+        }
+
+        // ------------------ NODE MANAGEMENT ------------------
+
+        function updateStats() {
+            document.getElementById('stat-nodes').innerText = nodeCount;
+            document.getElementById('stat-bandwidth').innerHTML = (nodeCount * 3.4).toFixed(1) + ' <span class="text-xs">MB/s</span>';
+            
+            const emptyState = document.getElementById('empty-state');
+            if(nodeCount > 0) emptyState.classList.add('hidden');
+            else emptyState.classList.remove('hidden');
+        }
+
+        function createScreenElement(stream, label, isReal, connection = null) {
+            const id = `node-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+            const div = document.createElement('div');
+            div.className = 'screen-node sci-panel aspect-video rounded-lg relative group overflow-hidden';
+            div.id = id;
+            div.dataset.label = label;
+            
+            if(connection) div.peerCall = connection;
+
+            // Content Generator
+            let innerHTML = '';
+            
+            if (isReal && stream) {
+                innerHTML = `<video autoplay playsinline class="w-full h-full object-cover"></video>`;
+            } else {
+                // Simulated Variations
+                const variant = Math.floor(Math.random() * 3);
+                const hue = Math.floor(Math.random() * 360);
+                
+                if (variant === 0) { // Waveform
+                    innerHTML = `
+                        <div class="w-full h-full bg-black flex items-center justify-center relative">
+                            <canvas id="cvs-${id}" class="w-full h-full opacity-60"></canvas>
+                            <div class="absolute top-2 left-2 text-[10px] text-gray-500 font-mono">AUDIO VISUALIZER</div>
+                        </div>
+                    `;
+                    setTimeout(() => initNodeVisualizer(`cvs-${id}`, hue), 100);
+                } else if (variant === 1) { // Terminal
+                    innerHTML = `
+                        <div class="w-full h-full bg-black p-2 font-mono text-[10px] text-green-500/80 overflow-hidden flex flex-col justify-end">
+                            <div class="opacity-50 text-xs border-b border-gray-800 mb-1 pb-1">TERMINAL: ${label}</div>
+                            <div id="term-${id}"></div>
+                        </div>
+                    `;
+                    startFakeTerminal(`term-${id}`);
+                } else { // Map/Radar
+                     innerHTML = `
+                        <div class="w-full h-full bg-gray-900 relative overflow-hidden">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="w-32 h-32 rounded-full border border-gray-700 relative animate-[spin_4s_linear_infinite]">
+                                    <div class="absolute top-0 left-1/2 w-0.5 h-1/2 bg-gradient-to-b from-green-500 to-transparent"></div>
+                                </div>
+                                <div class="absolute w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                            </div>
+                            <div class="absolute bottom-2 right-2 text-[10px] font-mono text-gray-400">RADAR TRACKING</div>
+                        </div>
+                    `;
+                }
+            }
+
+            div.innerHTML = `
+                ${innerHTML}
+                <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <div class="text-xs font-bold text-white">${label}</div>
+                            <div class="text-[10px] text-gray-400 font-mono">${isReal ? 'LIVE FEED' : 'SIMULATION'}</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="openNodeDetail('${id}')" class="p-1.5 bg-blue-600 hover:bg-blue-500 rounded text-white" title="Analyze">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            </button>
+                            <button onclick="removeNode('${id}')" class="p-1.5 bg-red-900/50 hover:bg-red-600 border border-red-500/50 rounded text-white" title="Drop Connection">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Status Dot -->
+                <div class="absolute top-2 right-2 w-2 h-2 rounded-full ${isReal ? 'bg-green-500' : 'bg-blue-500'} animate-pulse shadow-[0_0_10px_currentColor]"></div>
+            `;
+
+            document.getElementById('grid-container').appendChild(div);
+            
+            if (isReal && stream) {
+                const video = div.querySelector('video');
+                video.srcObject = stream;
+                stream.getVideoTracks()[0].onended = () => removeNode(id);
+            }
+
+            nodeCount++;
+            updateStats();
+            audioSys.playConnect();
+
+            // Animate In
+            div.style.opacity = '0';
+            div.style.transform = 'scale(0.9)';
+            requestAnimationFrame(() => {
+                div.style.opacity = '1';
+                div.style.transform = 'scale(1)';
+            });
+        }
+
+        function removeNode(id) {
+            const node = document.getElementById(id);
+            if (!node) return;
+
+            // Close connection
+            if (node.peerCall) node.peerCall.close();
+            
+            // Cleanup streams
+            const video = node.querySelector('video');
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(t => t.stop());
+            }
+
+            // Animate out
+            node.style.transform = 'scale(0.9) opacity(0)';
+            setTimeout(() => {
+                node.remove();
+                nodeCount--;
+                updateStats();
+            }, 300);
+            
+            audioSys.playDisconnect();
+        }
+
+        function clearGrid() {
+            const nodes = document.querySelectorAll('.screen-node');
+            nodes.forEach((n, i) => {
+                setTimeout(() => removeNode(n.id), i * 50);
+            });
+        }
+
+        function triggerSelfDestruct() {
+            // Visual Alarm
+            document.body.classList.add('bg-red-900/20');
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 bg-red-600 mix-blend-overlay z-[200] animate-pulse pointer-events-none';
+            document.body.appendChild(overlay);
+            
+            setTheme('#ef4444');
+            
+            // Audio Alarm
+            let count = 0;
+            const alarmInterval = setInterval(() => {
+                audioSys.playTone(800, 'sawtooth', 0.3);
+                setTimeout(() => audioSys.playTone(600, 'sawtooth', 0.3), 300);
+                count++;
+                if(count > 5) clearInterval(alarmInterval);
+            }, 600);
+
+            showToast('⚠️ LOCKDOWN SEQUENCE INITIATED', 'error');
+            
+            // Purge after delay
+            setTimeout(() => {
+                clearGrid();
+                showToast('SYSTEM PURGED', 'success');
+                setTimeout(() => {
+                    overlay.remove();
+                    document.body.classList.remove('bg-red-900/20');
+                    setTheme('#3b82f6'); // Reset
+                }, 2000);
+            }, 4000);
+        }
+
+        function addSimulatedNode() {
+            createScreenElement(null, `SIM-${Math.floor(Math.random()*9000)+1000}`, false);
+        }
+
+        function fillGrid(count) {
+            toggleSidePanel(); // Close menu
+            let delay = 0;
+            for(let i=0; i<count; i++) {
+                setTimeout(addSimulatedNode, delay);
+                delay += 100;
+            }
+        }
+
+        // ------------------ PEERJS NETWORK ------------------
+
+        function startAsHost() {
+            // Generate ID always
+            const id = 'SUAHCO4-' + Math.floor(Math.random() * 9000 + 1000);
+            peer = new Peer(id);
+
+            peer.on('open', (peerId) => {
+                myId = peerId;
+                myUsername = 'HOST';
+                isHost = true;
+                
+                document.getElementById('landing-overlay').classList.add('hidden');
+                toggleSidePanel(); // Show menu
+                showToast(`Session Started: ${peerId}`, 'success');
+                
+                // Add Host info to header
+                const tag = document.createElement('div');
+                tag.className = 'absolute top-16 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs px-4 py-1 rounded-b font-bold shadow-lg z-20';
+                tag.innerText = `HOST ID: ${peerId}`;
+                document.body.appendChild(tag);
+            });
+
+            peer.on('call', (call) => {
+                call.answer();
+                const callerName = (call.metadata && call.metadata.username) ? call.metadata.username : `REMOTE-${call.peer}`;
+                
+                call.on('stream', (remoteStream) => {
+                    createScreenElement(remoteStream, callerName, true, call);
+                    showToast(`Inbound Stream: ${callerName}`, 'success');
+                });
+            });
+
+            peer.on('connection', (conn) => {
+                // Chat connection
+                setupChatConnection(conn);
+            });
+        }
+
+        function startAsClient() {
+            const target = document.getElementById('join-id-input').value.trim();
+            const usernameInput = document.getElementById('join-username-input').value.trim();
+            const username = usernameInput || `AGENT-${Math.floor(Math.random()*1000)}`;
+
+            if (!target) return alert('Enter Host ID');
+
+            try {
+                peer = new Peer(); // Random ID
+                
+                peer.on('open', async (id) => {
+                    myId = id;
+                    myUsername = username; // Set global username
+                    try {
+                        const stream = await navigator.mediaDevices.getDisplayMedia({
+                            video: { cursor: "always" },
+                            audio: false
+                        });
+                        
+                        document.getElementById('landing-overlay').classList.add('hidden');
+                        
+                        // Show local preview
+                        createScreenElement(stream, `${username} (YOU)`, true);
+                        
+                        // Call Host with Metadata
+                        const call = peer.call(target, stream, {
+                            metadata: { username: username }
+                        });
+                        
+                        // Connect Data Channel for Chat with Metadata
+                        const conn = peer.connect(target, {
+                            metadata: { username: username }
+                        });
+                        setupChatConnection(conn);
+
+                        call.on('close', () => {
+                            alert("Host disconnected you.");
+                            location.reload();
+                        });
+
+                    } catch (err) {
+                        console.error(err);
+                        alert("Connection failed: " + err.message);
+                    }
+                });
+
+                peer.on('error', (err) => {
+                    console.error(err);
+                    alert("Network Error: " + err.type + ". Try Offline Mode.");
+                });
+            } catch (e) {
+                alert("PeerJS failed to load. Please use Offline Mode.");
+            }
+        }
+
+        function startOfflineMode() {
+            document.getElementById('landing-overlay').classList.add('hidden');
+            toggleSidePanel(); // Open sidebar
+            
+            myId = "OFFLINE-LOCAL";
+            myUsername = "OPERATOR";
+            isHost = true;
+            
+            // Visual indicators
+            const tag = document.createElement('div');
+            tag.className = 'absolute top-16 left-1/2 transform -translate-x-1/2 bg-gray-700 text-gray-300 text-xs px-4 py-1 rounded-b font-bold shadow-lg z-20 border border-t-0 border-gray-600';
+            tag.innerText = `OFFLINE MODE`;
+            document.body.appendChild(tag);
+            
+            showToast('Initializing Local Console...', 'warning');
+            
+            // Add a welcome message in terminal
+            setTimeout(() => {
+                if(terminal) {
+                    terminal.print("NETWORK UNAVAILABLE", "text-yellow-500");
+                    terminal.print("RUNNING IN LOCAL SIMULATION MODE", "text-yellow-500");
+                }
+                // Add default local nodes
+                fillGrid(3);
+                
+                // Update footer status
+                document.getElementById('connection-status').innerHTML = '<span class="text-yellow-500">●</span> SOCKET: OFFLINE (LOCAL)';
+            }, 1000);
+        }
+
+        function startLocalShare() {
+            navigator.mediaDevices.getDisplayMedia({ video: true }).then(stream => {
+                createScreenElement(stream, 'LOCAL-USER', true);
+            }).catch(e => console.error(e));
+        }
+
+        // ------------------ CHAT & FILE SYSTEM ------------------
+        let chatConn = null;
+
+        function setupChatConnection(conn) {
+            chatConn = conn;
+            conn.on('open', () => {
+                showToast('Chat Channel Secured');
+                switchTab('chat');
+            });
+            conn.on('data', (data) => {
+                if(data.type === 'file') {
+                    addFileMessage(data.sender, data.name, data.data, false);
+                } else {
+                    addChatMessage(data.sender, data.msg, false);
+                }
+            });
+        }
+
+        function sendChatMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const msg = input.value;
+            if(!msg) return;
+
+            addChatMessage('ME', msg, true);
+            // Send username instead of ID if available
+            if(chatConn) chatConn.send({ sender: myUsername || myId, msg: msg });
+            
+            input.value = '';
+        }
+
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                
+                // Add to my chat
+                addFileMessage('ME', file.name, dataUrl, true);
+                
+                // Send
+                if(chatConn) {
+                    chatConn.send({ 
+                        sender: myUsername || myId, 
+                        type: 'file',
+                        name: file.name,
+                        data: dataUrl
+                    });
+                }
+            };
+            reader.readAsDataURL(file);
+            input.value = ''; // reset
+        }
+
+        function addChatMessage(sender, msg, isMe) {
+            const div = document.createElement('div');
+            div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+            div.innerHTML = `
+                <div class="text-[10px] text-gray-500 mb-1">${sender}</div>
+                <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300'} px-3 py-2 rounded max-w-[80%] break-words shadow-sm">
+                    ${msg}
+                </div>
+            `;
+            document.getElementById('chat-messages').appendChild(div);
+            document.getElementById('chat-messages').scrollTop = 99999;
+            if(!isMe) audioSys.playTone(800, 'sine', 0.05);
+        }
+
+        function addFileMessage(sender, fileName, dataUrl, isMe) {
+            const div = document.createElement('div');
+            div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+            div.innerHTML = `
+                <div class="text-[10px] text-gray-500 mb-1">${sender}</div>
+                <div class="${isMe ? 'bg-blue-600/50 border-blue-500' : 'bg-gray-800 border-gray-600'} border px-3 py-2 rounded max-w-[80%] flex items-center gap-3">
+                    <div class="bg-black/20 p-2 rounded">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-white truncate max-w-[150px]">${fileName}</div>
+                        <a href="${dataUrl}" download="${fileName}" class="text-[10px] underline opacity-80 hover:opacity-100">DOWNLOAD</a>
+                    </div>
+                </div>
+            `;
+            document.getElementById('chat-messages').appendChild(div);
+            document.getElementById('chat-messages').scrollTop = 99999;
+            if(!isMe) audioSys.playAlert();
+        }
+
+        // ------------------ VISUALIZATIONS ------------------
+
+        function initBackgroundCanvas() {
+            const cvs = document.getElementById('bg-canvas');
+            const ctx = cvs.getContext('2d');
+            
+            const resize = () => {
+                cvs.width = window.innerWidth;
+                cvs.height = window.innerHeight;
+            };
+            window.onresize = resize;
+            resize();
+
+            const particles = [];
+            for(let i=0; i<50; i++) {
+                particles.push({
+                    x: Math.random() * cvs.width,
+                    y: Math.random() * cvs.height,
+                    s: Math.random() * 2,
+                    v: Math.random() * 0.5
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0,0,cvs.width,cvs.height);
+                ctx.fillStyle = '#3b82f6';
+                
+                particles.forEach(p => {
+                    p.y -= p.v;
+                    if(p.y < 0) p.y = cvs.height;
+                    
+                    ctx.globalAlpha = 0.1;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.s, 0, Math.PI*2);
+                    ctx.fill();
+                });
+                
+                // Draw Grid Lines
+                ctx.strokeStyle = '#1f2937';
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.05;
+                const gridSize = 100;
+                
+                // Moving grid
+                const offset = (Date.now() / 50) % gridSize;
+                
+                for(let x=0; x<cvs.width; x+=gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, cvs.height);
+                    ctx.stroke();
+                }
+                for(let y=offset; y<cvs.height; y+=gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(cvs.width, y);
+                    ctx.stroke();
+                }
+
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        function initNodeVisualizer(id, hue) {
+            const cvs = document.getElementById(id);
+            if(!cvs) return;
+            const ctx = cvs.getContext('2d');
+            cvs.width = 300;
+            cvs.height = 180;
+
+            const bars = 20;
+            const barWidth = cvs.width / bars;
+
+            function draw() {
+                if(!document.getElementById(id)) return;
+                ctx.clearRect(0,0,cvs.width,cvs.height);
+                
+                for(let i=0; i<bars; i++) {
+                    const h = Math.random() * cvs.height * 0.8;
+                    ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.5)`;
+                    ctx.fillRect(i * barWidth, cvs.height - h, barWidth - 2, h);
+                }
+                setTimeout(() => requestAnimationFrame(draw), 100);
+            }
+            draw();
+        }
+
+        function startFakeTerminal(id) {
+            const el = document.getElementById(id);
+            if(!el) return;
+            
+            const lines = [
+                "Scanning ports...", 
+                "Handshake initialized", 
+                "Packet 0x4F received", 
+                "Decrypting stream...", 
+                "Buffer verified", 
+                "Syncing audio...",
+                "Latency: 12ms",
+                "Heartbeat ACK"
+            ];
+            
+            setInterval(() => {
+                if(!document.getElementById(id)) return;
+                const line = lines[Math.floor(Math.random()*lines.length)];
+                const div = document.createElement('div');
+                div.className = 'terminal-line';
+                div.innerText = `> ${line}`;
+                el.appendChild(div);
+                if(el.children.length > 8) el.removeChild(el.firstChild);
+            }, 800);
+        }
+
+        function initTopologyCanvas() {
+            const cvs = document.getElementById('topology-canvas');
+            const ctx = cvs.getContext('2d');
+            
+            const center = { x: cvs.width/2, y: cvs.height/2 };
+            const nodes = [];
+
+            function loop() {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0,0,cvs.width,cvs.height);
+                
+                // Draw Center
+                ctx.fillStyle = '#3b82f6';
+                ctx.beginPath();
+                ctx.arc(center.x, center.y, 4, 0, Math.PI*2);
+                ctx.fill();
+
+                // Generate nodes based on count
+                if(nodes.length !== nodeCount) {
+                    nodes.length = 0;
+                    for(let i=0; i<nodeCount; i++) {
+                        const angle = (Math.PI * 2 / nodeCount) * i + (Date.now()/1000);
+                        nodes.push({
+                            x: center.x + Math.cos(angle) * 40,
+                            y: center.y + Math.sin(angle) * 40
+                        });
+                    }
+                }
+
+                ctx.strokeStyle = '#1f2937';
+                nodes.forEach(n => {
+                    ctx.beginPath();
+                    ctx.moveTo(center.x, center.y);
+                    ctx.lineTo(n.x, n.y);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#10b981';
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, 2, 0, Math.PI*2);
+                    ctx.fill();
+                });
+
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // ------------------ DETAILED MODAL & ADVANCED TOOLS ------------------
+        let currentDetailId = null;
+        let chartInstance = null;
+
+        function openNodeDetail(id) {
+            const modal = document.getElementById('node-detail-modal');
+            const node = document.getElementById(id);
+            const container = document.getElementById('modal-video-container');
+            
+            currentDetailId = id;
+            document.getElementById('modal-node-title').innerText = node.dataset.label;
+            
+            // Reset Recording State
+            isRecording = false;
+            updateRecordButton();
+            
+            // Clone content
+            container.innerHTML = '';
+            const clone = node.cloneNode(true);
+            // Remove overlays from clone for clear view
+            const overlay = clone.querySelector('.absolute');
+            if(overlay) overlay.remove(); 
+            clone.className = 'w-full h-full flex items-center justify-center';
+            container.appendChild(clone);
+            
+            // Re-attach stream if real video
+            const origVideo = node.querySelector('video');
+            const cloneVideo = clone.querySelector('video');
+            
+            // Recording Setup
+            if(origVideo && cloneVideo) {
+                cloneVideo.srcObject = origVideo.srcObject;
+                document.getElementById('btn-record-stream').disabled = false;
+                document.getElementById('btn-record-stream').classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                document.getElementById('btn-record-stream').disabled = true;
+                document.getElementById('btn-record-stream').classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            modal.classList.remove('hidden');
+            
+            // Start chart
+            if(chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById('detail-chart-cpu').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        label: 'Load %',
+                        data: Array(20).fill(0).map(() => Math.random() * 100),
+                        borderColor: '#3b82f6',
+                        tension: 0.4,
+                        borderWidth: 1,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false, min: 0, max: 100 }
+                    },
+                    animation: false
+                }
+            });
+
+            // Animate Chart
+            const chartInterval = setInterval(() => {
+                if(modal.classList.contains('hidden')) {
+                    clearInterval(chartInterval);
+                    return;
+                }
+                const data = chartInstance.data.datasets[0].data;
+                data.shift();
+                data.push(Math.random() * 60 + 20);
+                chartInstance.update();
+            }, 500);
+        }
+
+        function closeDetailModal() {
+            if(isRecording) toggleRecording(); // Stop recording if closing
+            document.getElementById('node-detail-modal').classList.add('hidden');
+            document.getElementById('modal-video-container').innerHTML = ''; 
+        }
+
+        function disconnectCurrentModalNode() {
+            if(currentDetailId) {
+                removeNode(currentDetailId);
+                closeDetailModal();
+            }
+        }
+
+        // --- Recording Logic ---
+        function toggleRecording() {
+            if(!currentDetailId) return;
+            const video = document.getElementById('modal-video-container').querySelector('video');
+            if(!video || !video.srcObject) return;
+
+            if(!isRecording) {
+                // Start
+                recordedChunks = [];
+                try {
+                    const options = { mimeType: 'video/webm; codecs=vp9' };
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                         console.warn('VP9 not supported, falling back to default');
+                         delete options.mimeType;
+                    }
+                    mediaRecorder = new MediaRecorder(video.srcObject, options);
+                    
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) recordedChunks.push(event.data);
+                    };
+                    
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = `SUAHCO4-REC-${Date.now()}.webm`;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => {
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(url);
+                        }, 100);
+                        showToast('Recording Saved', 'success');
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    updateRecordButton();
+                    showToast('Recording Started...', 'error');
+                } catch(e) {
+                    console.error(e);
+                    showToast('Recording Failed: ' + e.message, 'error');
+                }
+            } else {
+                // Stop
+                mediaRecorder.stop();
+                isRecording = false;
+                updateRecordButton();
+            }
+        }
+
+        function updateRecordButton() {
+            const btn = document.getElementById('btn-record-stream');
+            const txt = document.getElementById('record-text');
+            const dot = btn.querySelector('div');
+            
+            if(isRecording) {
+                txt.innerText = 'STOP REC';
+                dot.classList.add('animate-ping');
+                btn.classList.add('border-red-500', 'text-red-400');
+            } else {
+                txt.innerText = 'START REC';
+                dot.classList.remove('animate-ping');
+                btn.classList.remove('border-red-500', 'text-red-400');
+            }
+        }
+
+        // --- PiP Logic ---
+        async function togglePiP() {
+            const video = document.getElementById('modal-video-container').querySelector('video');
+            if(!video) return showToast('No video source for PiP', 'error');
+
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else {
+                    await video.requestPictureInPicture();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('PiP Failed: ' + err.message, 'error');
+            }
+        }
+
+        // ------------------ NEW CONTROL PANEL UTILITIES ------------------
+
+        function updateMasterVolume(val) {
+            const vol = val / 100;
+            if(audioSys && audioSys.masterGain) {
+                audioSys.masterGain.gain.setTargetAtTime(vol, audioSys.ctx.currentTime, 0.1);
+            }
+            document.getElementById('vol-display').innerText = val + '%';
+        }
+
+        function toggleCRT() {
+            const overlay = document.querySelector('.crt-overlay');
+            const btn = document.getElementById('btn-crt');
+            overlay.classList.toggle('hidden');
+            if(overlay.classList.contains('hidden')) {
+                btn.innerText = "CRT FILTER: OFF";
+                btn.classList.replace('text-blue-400', 'text-gray-500');
+                btn.classList.replace('border-blue-500/50', 'border-gray-600');
+            } else {
+                btn.innerText = "CRT FILTER: ON";
+                btn.classList.replace('text-gray-500', 'text-blue-400');
+                btn.classList.replace('border-gray-600', 'border-blue-500/50');
+            }
+        }
+
+        function toggleGrayscale() {
+            const grid = document.getElementById('grid-container');
+            const btn = document.getElementById('btn-mono');
+            grid.classList.toggle('grayscale');
+            if(grid.classList.contains('grayscale')) {
+                btn.classList.add('text-green-400', 'border-green-500');
+                btn.classList.remove('text-gray-400', 'border-gray-600');
+            } else {
+                btn.classList.remove('text-green-400', 'border-green-500');
+                btn.classList.add('text-gray-400', 'border-gray-600');
+            }
+        }
+
+        function broadcastQuickAlert(type) {
+            const msgs = {
+                'INFO': 'SYSTEM CHECK COMPLETE',
+                'WARN': 'NETWORK CONGESTION DETECTED',
+                'CRIT': 'SECURITY BREACH AT SECTOR 7'
+            };
+            const msg = msgs[type];
+            const color = type === 'INFO' ? 'info' : type === 'WARN' ? 'warning' : 'error';
+            
+            // Local Feedback
+            showToast(`BROADCAST SENT: ${msg}`, color);
+            addChatMessage('SYSTEM', `*** ALERT: ${msg} ***`, false);
+            
+            // Send if we have an active chat connection (as client)
+            // Or if we implemented broadcasting as host (requires tracking connections)
+            if(chatConn) {
+                chatConn.send({ sender: 'SYSTEM', msg: `*** ALERT: ${msg} ***` });
+            }
+        }
+
+        // ------------------ ADVANCED PROTOCOLS ------------------
+
+        function runDeepScan() {
+            const nodes = document.querySelectorAll('.screen-node');
+            if(nodes.length === 0) return showToast('No Nodes to Scan', 'error');
+
+            showToast('INITIATING DEEP PACKET INSPECTION...', 'info');
+            audioSys.playTone(800, 'sine', 0.1);
+
+            nodes.forEach((node, index) => {
+                setTimeout(() => {
+                    // Add Overlay
+                    const overlay = document.createElement('div');
+                    overlay.className = 'scanning-overlay';
+                    overlay.innerHTML = 'SCANNING...';
+                    node.appendChild(overlay);
+                    audioSys.playTone(1200 + (index * 50), 'square', 0.05);
+
+                    // Resolve Overlay
+                    setTimeout(() => {
+                        overlay.innerHTML = 'SECURE';
+                        overlay.style.borderColor = '#10b981';
+                        overlay.style.color = '#10b981';
+                        
+                        setTimeout(() => {
+                            overlay.remove();
+                        }, 500);
+                    }, 800);
+
+                }, index * 300);
+            });
+
+            setTimeout(() => {
+                showToast('SCAN COMPLETE: ALL NODES SECURE', 'success');
+                logger.log('DEEP SCAN COMPLETED SUCCESSFULLY', 'success');
+            }, nodes.length * 300 + 1000);
+        }
+
+        let isEncrypted = false;
+        function toggleEncryption() {
+            const grid = document.getElementById('grid-container');
+            const btn = document.getElementById('btn-encrypt');
+            
+            isEncrypted = !isEncrypted;
+            
+            if(isEncrypted) {
+                grid.classList.add('encrypted-feed');
+                btn.classList.add('bg-indigo-600', 'text-white');
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg> ENCRYPTED`;
+                showToast('VIDEO FEED ENCRYPTION ENABLED', 'success');
+                audioSys.playTone(200, 'sawtooth', 0.2);
+            } else {
+                grid.classList.remove('encrypted-feed');
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg> ENCRYPT`;
+                showToast('VIDEO FEED DECRYPTED', 'info');
+                audioSys.playTone(600, 'sine', 0.2);
+            }
+        }
+
+    </script>
+</body>
+</html>

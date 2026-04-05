@@ -84,6 +84,7 @@
         /* Sci-Fi Panel */
         .sci-panel {
             background: rgba(17, 24, 39, 0.8);
+            -webkit-backdrop-filter: blur(12px);
             backdrop-filter: blur(12px);
             border: 1px solid var(--color-border);
             position: relative;
@@ -183,6 +184,7 @@
         /* Range Input Styling */
         input[type=range] {
             -webkit-appearance: none; 
+            appearance: none;
             background: transparent; 
         }
         input[type=range]::-webkit-slider-thumb {
@@ -238,6 +240,7 @@
             font-weight: bold;
             text-shadow: 0 0 5px #10b981;
             pointer-events: none;
+            -webkit-backdrop-filter: blur(2px);
             backdrop-filter: blur(2px);
             animation: pulse-scan 0.5s infinite alternate;
         }
@@ -334,10 +337,16 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <button id="mute-all-btn" onclick="toggleGlobalMute()" class="w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white transition has-tooltip">
+            <button id="mute-all-btn" onclick="toggleGlobalMute()" aria-label="Toggle Global Audio" class="w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white transition has-tooltip">
                 <span class="tooltip">Toggle Global Audio</span>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+            </button>
+            <button onclick="location.reload()" aria-label="Refresh System" class="w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center hover:bg-gray-800 text-gray-400 hover:text-white transition has-tooltip">
+                <span class="tooltip">Refresh System</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
             </button>
             <div class="h-8 w-px bg-gray-800 mx-2"></div>
@@ -362,7 +371,7 @@
         <aside id="main-sidebar" class="w-0 bg-gray-900 border-r border-gray-800 transition-all duration-300 flex flex-col overflow-hidden relative z-20">
             <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
                 <h2 class="text-sm font-bold text-white tracking-widest">CONTROL PANEL</h2>
-                <button onclick="toggleSidePanel()" class="text-gray-500 hover:text-white">
+                <button onclick="toggleSidePanel()" aria-label="Close Panel" class="text-gray-500 hover:text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -381,11 +390,17 @@
                 <!-- Action Groups -->
                 <div class="space-y-2">
                     <label class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Session Management</label>
-                    <button onclick="startAsHost()" class="w-full bg-blue-600/20 border border-blue-500/50 text-blue-400 hover:bg-blue-600 hover:text-white p-3 rounded flex items-center justify-center gap-2 transition group">
+                <button onclick="startAsHost()" title="Start New Session" class="w-full bg-blue-600/20 border border-blue-500/50 text-blue-400 hover:bg-blue-600 hover:text-white p-3 rounded flex items-center justify-center gap-2 transition group">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                         <span class="font-bold">New Session</span>
+                    </button>
+                    <button onclick="startWifiSession()" title="Start WiFi Session" class="w-full bg-purple-600/20 border border-purple-500/50 text-purple-400 hover:bg-purple-600 hover:text-white p-3 rounded flex items-center justify-center gap-2 transition group">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                        </svg>
+                        <span class="font-bold">WiFi Session</span>
                     </button>
                     <button onclick="startLocalShare()" class="w-full bg-green-600/20 border border-green-500/50 text-green-400 hover:bg-green-600 hover:text-white p-3 rounded flex items-center justify-center gap-2 transition">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -421,14 +436,14 @@
                 <div class="space-y-2">
                     <label class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">System Theme</label>
                     <div class="grid grid-cols-4 gap-2">
-                        <button onclick="setTheme('#3b82f6')" class="h-6 rounded bg-blue-500 hover:scale-110 transition"></button>
-                        <button onclick="setTheme('#10b981')" class="h-6 rounded bg-emerald-500 hover:scale-110 transition"></button>
-                        <button onclick="setTheme('#ef4444')" class="h-6 rounded bg-red-500 hover:scale-110 transition"></button>
-                        <button onclick="setTheme('#f59e0b')" class="h-6 rounded bg-amber-500 hover:scale-110 transition"></button>
-                        <button onclick="setTheme('#8b5cf6')" class="h-6 rounded bg-violet-500 hover:scale-110 transition"></button>
-                        <button onclick="setTheme('#ec4899')" class="h-6 rounded bg-pink-500 hover:scale-110 transition"></button>
-                        <button onclick="setTheme('#06b6d4')" class="h-6 rounded bg-cyan-500 hover:scale-110 transition"></button>
-                        <button onclick="setTheme('#6366f1')" class="h-6 rounded bg-indigo-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#3b82f6')" aria-label="Blue Theme" class="h-6 rounded bg-blue-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#10b981')" aria-label="Green Theme" class="h-6 rounded bg-emerald-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#ef4444')" aria-label="Red Theme" class="h-6 rounded bg-red-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#f59e0b')" aria-label="Amber Theme" class="h-6 rounded bg-amber-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#8b5cf6')" aria-label="Violet Theme" class="h-6 rounded bg-violet-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#ec4899')" aria-label="Pink Theme" class="h-6 rounded bg-pink-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#06b6d4')" aria-label="Cyan Theme" class="h-6 rounded bg-cyan-500 hover:scale-110 transition"></button>
+                        <button onclick="setTheme('#6366f1')" aria-label="Indigo Theme" class="h-6 rounded bg-indigo-500 hover:scale-110 transition"></button>
                     </div>
                 </div>
 
@@ -455,7 +470,7 @@
                             <span>MASTER GAIN</span>
                             <span id="vol-display">30%</span>
                         </div>
-                        <input type="range" min="0" max="100" value="30" class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" oninput="updateMasterVolume(this.value)">
+                        <input type="range" aria-label="Master Volume" min="0" max="100" value="30" class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" oninput="updateMasterVolume(this.value)">
                     </div>
 
                     <!-- Toggles -->
@@ -494,7 +509,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                             </svg>
-                            <input type="file" id="chat-file-input" class="hidden" onchange="handleFileUpload(this)">
+                            <input type="file" id="chat-file-input" aria-label="Upload File" class="hidden" onchange="handleFileUpload(this)">
                         </label>
                         <input type="text" id="chat-input" placeholder="Broadcast message..." class="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none">
                         <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded text-xs hover:bg-blue-500">SEND</button>
@@ -570,7 +585,7 @@
                 
                 <div class="relative z-10">
                     <h1 class="text-5xl font-black text-white mb-2 tracking-tighter">SUAH<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">CO4</span></h1>
-                    <p class="text-gray-400 text-lg mb-8">Next-Gen Distributed Screen Monitoring</p>
+                    <p class="text-gray-400 text-lg mb-8">Connect to any device and on any network connection</p>
                     
                     <div class="space-y-4">
                         <div class="flex items-center gap-3 text-gray-300">
@@ -599,13 +614,25 @@
                 <div class="space-y-4">
                     <!-- Host Btn -->
                     <button onclick="startAsHost()" class="w-full group relative overflow-hidden rounded-lg bg-blue-600 p-px focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-900">
-                        <span class="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)] opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                        <span class="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#BFDBFE_0%,#3B82F6_50%,#BFDBFE_100%)] opacity-0 group-hover:opacity-100 transition-opacity"></span>
                         <span class="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-lg bg-gray-900 px-8 py-4 text-sm font-medium text-white backdrop-blur-3xl transition-colors group-hover:bg-gray-900/90">
                             <div class="flex flex-col items-start w-full">
                                 <span class="font-bold text-lg text-blue-400">CREATE CONTROL ROOM</span>
                                 <span class="text-xs text-gray-400">Monitor incoming streams as Host</span>
                             </div>
                             <svg class="ml-auto w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                        </span>
+                    </button>
+                    
+                    <!-- WiFi Host Btn -->
+                    <button onclick="startWifiSession()" class="w-full group relative overflow-hidden rounded-lg bg-purple-600 p-px focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-gray-900">
+                        <span class="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E9D5FF_0%,#A855F7_50%,#E9D5FF_100%)] opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                        <span class="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-lg bg-gray-900 px-8 py-4 text-sm font-medium text-white backdrop-blur-3xl transition-colors group-hover:bg-gray-900/90">
+                            <div class="flex flex-col items-start w-full">
+                                <span class="font-bold text-lg text-purple-400">START WIFI SESSION</span>
+                                <span class="text-xs text-gray-400">Optimized for Local Network</span>
+                            </div>
+                            <svg class="ml-auto w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" /></svg>
                         </span>
                     </button>
 
@@ -639,7 +666,7 @@
     <!-- Node Detail Modal (Overlay) -->
     <div id="node-detail-modal" class="fixed inset-0 bg-black/90 z-40 hidden flex items-center justify-center p-8 backdrop-blur">
         <div class="bg-gray-900 border border-gray-700 w-full max-w-6xl h-full max-h-[80vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
-            <button onclick="closeDetailModal()" class="absolute top-4 right-4 text-white hover:text-red-500 z-50">
+            <button onclick="closeDetailModal()" aria-label="Close Modal" class="absolute top-4 right-4 text-white hover:text-red-500 z-50">
                 <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
             
@@ -881,6 +908,17 @@
         window.onload = () => {
             // Init Terminal
             terminal = new TerminalController();
+
+            // Restore saved session data for network recovery
+            const savedHostId = localStorage.getItem('suahco4_last_host_id');
+            if (savedHostId) {
+                document.getElementById('join-id-input').value = savedHostId;
+            }
+            const savedUsername = localStorage.getItem('suahco4_last_username');
+            if (savedUsername) {
+                document.getElementById('join-username-input').value = savedUsername;
+            }
+
             runBootSequence(() => {
                 initBackgroundCanvas();
                 initTopologyCanvas();
@@ -1224,9 +1262,14 @@
 
         // ------------------ PEERJS NETWORK ------------------
 
-        function startAsHost() {
-            // Generate ID always
-            const id = 'SUAHCO4-' + Math.floor(Math.random() * 9000 + 1000);
+        async function startAsHost() {
+            // Retrieve or generate persistent Host Identity to allow client reconnection
+            let id = localStorage.getItem('suahco4_host_identity');
+            if (!id) {
+                id = 'SUAHCO4-' + Math.floor(Math.random() * 9000 + 1000);
+                localStorage.setItem('suahco4_host_identity', id);
+            }
+            
             peer = new Peer(id);
 
             peer.on('open', (peerId) => {
@@ -1261,55 +1304,127 @@
             });
         }
 
-        function startAsClient() {
+        async function startWifiSession() {
+            // Retrieve or generate persistent WiFi Identity
+            let wifiSessionId = localStorage.getItem('suahco4_wifi_identity');
+            if (!wifiSessionId) {
+                wifiSessionId = `WIFI-${Math.floor(Math.random() * 9000 + 1000)}`;
+                localStorage.setItem('suahco4_wifi_identity', wifiSessionId);
+            }
+            
+            peer = new Peer(wifiSessionId);
+
+            peer.on('open', (id) => {
+                myId = id;
+                myUsername = 'WIFI-HOST';
+                isHost = true;
+                
+                // Transition UI state
+                document.getElementById('landing-overlay').classList.add('hidden');
+                toggleSidePanel();
+                showToast(`Local Network Session: ${id}`, 'success');
+                
+                const tag = document.createElement('div');
+                tag.className = 'absolute top-16 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white text-xs px-4 py-1 rounded-b font-bold shadow-lg z-20';
+                tag.innerText = `WIFI ID: ${id}`;
+                document.body.appendChild(tag);
+                
+                document.getElementById('connection-status').innerHTML = '<span class="text-purple-500">●</span> SOCKET: WIFI (LAN)';
+            });
+
+            peer.on('call', (call) => {
+                call.answer();
+                const callerName = (call.metadata && call.metadata.username) ? call.metadata.username : `WIFI-DEVICE-${call.peer}`;
+                call.on('stream', (remoteStream) => {
+                    createScreenElement(remoteStream, callerName, true, call);
+                    showToast(`WiFi Stream: ${callerName}`, 'success');
+                });
+            });
+
+            peer.on('connection', (conn) => {
+                setupChatConnection(conn);
+            });
+        }
+
+        async function startAsClient() {
             const target = document.getElementById('join-id-input').value.trim();
             const usernameInput = document.getElementById('join-username-input').value.trim();
             const username = usernameInput || `AGENT-${Math.floor(Math.random()*1000)}`;
 
             if (!target) return alert('Enter Host ID');
 
+            // Persist target data for reconnection after network failure
+            localStorage.setItem('suahco4_last_host_id', target);
+            localStorage.setItem('suahco4_last_username', username);
+
+            // 1. Get Stream FIRST to preserve User Gesture
+            let stream;
             try {
-                peer = new Peer(); // Random ID
+                if (!navigator.mediaDevices) throw new Error("Secure context required (HTTPS/Localhost)");
                 
-                peer.on('open', async (id) => {
-                    myId = id;
-                    myUsername = username; // Set global username
+                // Try Screen Share
+                if (typeof navigator.mediaDevices.getDisplayMedia === 'function') {
                     try {
-                        const stream = await navigator.mediaDevices.getDisplayMedia({
+                        stream = await navigator.mediaDevices.getDisplayMedia({
                             video: { cursor: "always" },
                             audio: false
                         });
-                        
-                        document.getElementById('landing-overlay').classList.add('hidden');
-                        
-                        // Show local preview
-                        createScreenElement(stream, `${username} (YOU)`, true);
-                        
-                        // Call Host with Metadata
-                        const call = peer.call(target, stream, {
-                            metadata: { username: username }
-                        });
-                        
-                        // Connect Data Channel for Chat with Metadata
-                        const conn = peer.connect(target, {
-                            metadata: { username: username }
-                        });
-                        setupChatConnection(conn);
-
-                        call.on('close', () => {
-                            alert("Host disconnected you.");
-                            location.reload();
-                        });
-
                     } catch (err) {
-                        console.error(err);
-                        alert("Connection failed: " + err.message);
+                        if (err.name === 'NotAllowedError') return; // User cancelled
+                        throw err; // Fallback
                     }
+                } else {
+                    throw new Error("Screen sharing not supported");
+                }
+            } catch (err) {
+                // Fallback to Camera
+                if (confirm("Screen sharing unavailable (Security/Browser restriction). Switch to Camera mode?")) {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+                    } catch (e) {
+                        return alert("Camera failed: " + e.message);
+                    }
+                } else return;
+            }
+
+            try {
+                peer = new Peer(); // Random ID
+                
+                peer.on('open', (id) => {
+                    myId = id;
+                    myUsername = username; // Set global username
+                    
+                    document.getElementById('landing-overlay').classList.add('hidden');
+                    
+                    // Show local preview
+                    createScreenElement(stream, `${username} (YOU)`, true);
+                    
+                    // Call Host with Metadata
+                    const call = peer.call(target, stream, {
+                        metadata: { username: username }
+                    });
+                    
+                    // Connect Data Channel for Chat with Metadata
+                    const conn = peer.connect(target, {
+                        metadata: { username: username }
+                    });
+                    setupChatConnection(conn);
+
+                    call.on('close', () => {
+                        alert("Host disconnected you.");
+                        location.reload();
+                    });
                 });
 
                 peer.on('error', (err) => {
                     console.error(err);
-                    alert("Network Error: " + err.type + ". Try Offline Mode.");
+                    if (err.type === 'peer-unavailable') {
+                        showToast(`ERROR: HOST '${target}' NOT FOUND`, 'error');
+                        // Reload after 3 seconds to reset state
+                        setTimeout(() => location.reload(), 3000);
+                    } else {
+                        showToast(`NETWORK ERROR: ${err.type}`, 'error');
+                    }
                 });
             } catch (e) {
                 alert("PeerJS failed to load. Please use Offline Mode.");

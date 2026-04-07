@@ -612,6 +612,24 @@
                 </div>
 
                 <div class="space-y-4">
+                    <!-- Host Settings -->
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-xs font-bold text-gray-500 uppercase">Host Settings</label>
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <span class="text-[9px] text-gray-500 group-hover:text-blue-400 transition-colors uppercase font-mono">Auto-Gen Pass</span>
+                                <input type="checkbox" id="auto-pass-toggle" onchange="toggleAutoPassword()" class="sr-only peer">
+                                <div class="w-6 h-3 bg-gray-700 rounded-full peer peer-checked:bg-blue-600 relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:after:translate-x-3"></div>
+                            </label>
+                        </div>
+                        <div class="relative">
+                            <input type="password" id="host-password-input" placeholder="SET OPTIONAL PASSWORD" class="w-full bg-black border border-gray-700 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-xs uppercase tracking-wider">
+                            <button onclick="togglePassVisibility('host-password-input')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white p-1" title="Toggle Visibility">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Host Btn -->
                     <button onclick="startAsHost()" class="w-full group relative overflow-hidden rounded-lg bg-blue-600 p-px focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-gray-900">
                         <span class="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#BFDBFE_0%,#3B82F6_50%,#BFDBFE_100%)] opacity-0 group-hover:opacity-100 transition-opacity"></span>
@@ -643,6 +661,12 @@
                             <div>
                                 <input type="text" id="join-username-input" placeholder="ENTER YOUR CALLSIGN" class="w-full bg-black border border-gray-700 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-xs uppercase tracking-wider mb-1">
                             </div>
+                            <div>
+                                <div class="relative">
+                                    <input type="password" id="join-password-input" placeholder="ENTER ROOM PASSWORD" class="w-full bg-black border border-gray-700 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-xs uppercase tracking-wider mb-1">
+                                    <button onclick="togglePassVisibility('join-password-input')" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white p-1" title="Toggle Visibility"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg></button>
+                                </div>
+                            </div>
                             <div class="flex gap-2">
                                 <input type="text" id="join-id-input" placeholder="ENTER HOST ID" class="flex-1 bg-black border border-gray-700 rounded px-3 py-2 text-white focus:border-green-500 focus:outline-none font-mono text-xs uppercase">
                                 <button onclick="startAsClient()" class="bg-green-600 hover:bg-green-500 text-white px-4 rounded font-bold transition text-xs">
@@ -653,9 +677,12 @@
                     </div>
                     
                     <!-- Offline Toggle -->
-                    <div class="mt-6 pt-6 border-t border-gray-800 text-center">
+                    <div class="mt-6 pt-6 border-t border-gray-800 text-center flex flex-col items-center gap-3">
                         <button onclick="startOfflineMode()" class="text-xs text-gray-500 hover:text-white underline decoration-dotted underline-offset-4 transition">
                             ENTER OFFLINE / LOCAL CONSOLE
+                        </button>
+                        <button onclick="clearSessionHistory()" class="text-[9px] text-red-500/50 hover:text-red-400 transition uppercase tracking-[0.2em] font-black border border-red-900/20 px-2 py-1 rounded hover:bg-red-900/10">
+                            Reset Identity & History
                         </button>
                     </div>
                 </div>
@@ -917,6 +944,10 @@
             const savedUsername = localStorage.getItem('suahco4_last_username');
             if (savedUsername) {
                 document.getElementById('join-username-input').value = savedUsername;
+            }
+            const savedPassword = localStorage.getItem('suahco4_last_password');
+            if (savedPassword) {
+                document.getElementById('join-password-input').value = savedPassword;
             }
 
             runBootSequence(() => {
@@ -1262,7 +1293,9 @@
 
         // ------------------ PEERJS NETWORK ------------------
 
+        const lockoutRegistry = {}; // Tracks failures per Peer ID
         async function startAsHost() {
+            const roomPassword = document.getElementById('host-password-input').value;
             // Retrieve or generate persistent Host Identity to allow client reconnection
             let id = localStorage.getItem('suahco4_host_identity');
             if (!id) {
@@ -1289,6 +1322,22 @@
             });
 
             peer.on('call', (call) => {
+                const peerId = call.peer;
+                if (lockoutRegistry[peerId] >= 3) {
+                    showToast(`SECURITY: BLOCKED RE-ENTRY FROM ${peerId}`, 'error');
+                    call.close();
+                    return;
+                }
+
+                const clientPass = call.metadata ? call.metadata.password : '';
+                if (roomPassword && clientPass !== roomPassword) {
+                    lockoutRegistry[peerId] = (lockoutRegistry[peerId] || 0) + 1;
+                    const remaining = 3 - lockoutRegistry[peerId];
+                    showToast(`SECURITY: WRONG PASSWORD FROM ${peerId} (${remaining} LEFT)`, 'error');
+                    call.close();
+                    return;
+                }
+                
                 call.answer();
                 const callerName = (call.metadata && call.metadata.username) ? call.metadata.username : `REMOTE-${call.peer}`;
                 
@@ -1333,6 +1382,20 @@
             });
 
             peer.on('call', (call) => {
+                const peerId = call.peer;
+                if (lockoutRegistry[peerId] >= 3) {
+                    call.close();
+                    return;
+                }
+
+                const clientPass = call.metadata ? call.metadata.password : '';
+                if (roomPassword && clientPass !== roomPassword) {
+                    lockoutRegistry[peerId] = (lockoutRegistry[peerId] || 0) + 1;
+                    showToast(`SECURITY: WIFI PASS FAILURE FROM ${peerId}`, 'error');
+                    call.close();
+                    return;
+                }
+                
                 call.answer();
                 const callerName = (call.metadata && call.metadata.username) ? call.metadata.username : `WIFI-DEVICE-${call.peer}`;
                 call.on('stream', (remoteStream) => {
@@ -1342,6 +1405,19 @@
             });
 
             peer.on('connection', (conn) => {
+                const peerId = conn.peer;
+                if (lockoutRegistry[peerId] >= 3) {
+                    conn.close();
+                    return;
+                }
+
+                const clientPass = conn.metadata ? conn.metadata.password : '';
+                if (roomPassword && clientPass !== roomPassword) {
+                    lockoutRegistry[peerId] = (lockoutRegistry[peerId] || 0) + 1;
+                    showToast(`SECURITY: REJECTED WIFI HANDSHAKE (WRONG PASSWORD)`, 'error');
+                    conn.close();
+                    return;
+                }
                 setupChatConnection(conn);
             });
         }
@@ -1349,6 +1425,7 @@
         async function startAsClient() {
             const target = document.getElementById('join-id-input').value.trim();
             const usernameInput = document.getElementById('join-username-input').value.trim();
+            const password = document.getElementById('join-password-input').value;
             const username = usernameInput || `AGENT-${Math.floor(Math.random()*1000)}`;
 
             if (!target) return alert('Enter Host ID');
@@ -1356,6 +1433,7 @@
             // Persist target data for reconnection after network failure
             localStorage.setItem('suahco4_last_host_id', target);
             localStorage.setItem('suahco4_last_username', username);
+            localStorage.setItem('suahco4_last_password', password);
 
             // 1. Get Stream FIRST to preserve User Gesture
             let stream;
@@ -1401,12 +1479,12 @@
                     
                     // Call Host with Metadata
                     const call = peer.call(target, stream, {
-                        metadata: { username: username }
+                        metadata: { username: username, password: password }
                     });
                     
                     // Connect Data Channel for Chat with Metadata
                     const conn = peer.connect(target, {
-                        metadata: { username: username }
+                        metadata: { username: username, password: password }
                     });
                     setupChatConnection(conn);
 
@@ -1418,11 +1496,7 @@
 
                 peer.on('error', (err) => {
                     console.error(err);
-                    if (err.type === 'peer-unavailable') {
-                        showToast(`ERROR: HOST '${target}' NOT FOUND`, 'error');
-                        // Reload after 3 seconds to reset state
-                        setTimeout(() => location.reload(), 3000);
-                    } else {
+                    if (err.type === 'peer-unavailable' || err.type === 'network') {
                         showToast(`NETWORK ERROR: ${err.type}`, 'error');
                     }
                 });
@@ -1461,6 +1535,78 @@
             }, 1000);
         }
 
+        function clearSessionHistory() {
+            localStorage.removeItem('suahco4_last_host_id');
+            localStorage.removeItem('suahco4_last_username');
+            localStorage.removeItem('suahco4_last_password');
+            localStorage.removeItem('suahco4_host_identity');
+            localStorage.removeItem('suahco4_wifi_identity');
+            
+            document.getElementById('join-id-input').value = '';
+            document.getElementById('join-username-input').value = '';
+            document.getElementById('join-password-input').value = '';
+            document.getElementById('host-password-input').value = '';
+            
+            showToast('Identity and History Reset', 'info');
+        }
+
+        function toggleAutoPassword() {
+            const toggle = document.getElementById('auto-pass-toggle');
+            const input = document.getElementById('host-password-input');
+            if (toggle.checked) {
+                const randomPass = Math.random().toString(36).slice(-8).toUpperCase();
+                input.value = randomPass;
+                input.type = 'text'; // Auto-gen passwords should be visible to share
+                input.readOnly = true;
+                showToast('Random Password Generated', 'info');
+            } else {
+                input.value = '';
+                input.type = 'password';
+                input.readOnly = false;
+            }
+        }
+
+        function togglePassVisibility(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        let reconnecting = false;
+        async function reconnectClientToHost(targetHostId, username) {
+            if (reconnecting) {
+                console.log('Already attempting to reconnect.');
+                return;
+            }
+
+            reconnecting = true;
+            showToast(`Network restored. Attempting to reconnect to ${targetHostId}...`, 'info');
+            logger.log(`Attempting to reconnect to ${targetHostId} as ${username}`);
+
+            // Destroy existing peer instance if it exists and is not null
+            if (peer) {
+                peer.destroy();
+                peer = null;
+            }
+
+            try {
+                peer = new Peer(); // Create a new Peer instance with a new random ID
+
+                peer.on('open', (id) => {
+                    myId = id;
+                    myUsername = username;
+                    reconnecting = false;
+                    showToast(`Reconnected to Host: ${targetHostId}`, 'success');
+                    const savedPassword = localStorage.getItem('suahco4_last_password') || '';
+                    // Attempt to reconnect data channel for chat
+                    const conn = peer.connect(targetHostId, { metadata: { username: username, password: savedPassword } });
+                    setupChatConnection(conn);
+                    showToast('Media stream may need to be re-shared manually.', 'warning');
+                });
+            } catch (e) {
+                reconnecting = false;
+                showToast('Reconnection failed: ' + e.message, 'error');
+            }
+        }
         function startLocalShare() {
             navigator.mediaDevices.getDisplayMedia({ video: true }).then(stream => {
                 createScreenElement(stream, 'LOCAL-USER', true);
